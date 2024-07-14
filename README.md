@@ -32,7 +32,10 @@ Use `train_test_split` ([documentation here](https://scikit-learn.org/stable/mod
 
 ```python
 # Your code here: split the data into training and test sets
-
+from sklearn.model_selection import train_test_split
+X = ames.drop("SalePrice", axis=1)
+y = ames["SalePrice"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1)
 ```
 
 ## Prepare Both Sets for Modeling
@@ -73,7 +76,10 @@ X_test = pd.concat([
 
 ```python
 # Your code here: import the linear regression model class, initialize a model
-
+from sklearn.linear_model import LinearRegression
+linreg = LinearRegression()
+linreg.fit(X_train, y_train)
+LinearRegression()
 ```
 
 
@@ -89,6 +95,8 @@ X_test = pd.concat([
 
 ```python
 # Your code here: generate predictions for both sets
+y_hat_train = linreg.predict(X_train)
+y_hat_test = linreg.predict(X_test)
 
 ```
 
@@ -99,6 +107,11 @@ You can use `mean_squared_error` from scikit-learn ([documentation here](https:/
 
 ```python
 # Your code here: calculate training and test MSE
+from sklearn.metrics import mean_squared_error
+train_mse = mean_squared_error(y_train, y_hat_train)
+test_mse = mean_squared_error(y_test, y_hat_test)
+print('Train Mean Squared Error:', train_mse)
+print('Test Mean Squared Error: ', test_mse)
 
 ```
 
@@ -113,6 +126,46 @@ Iterate over a range of train-test split sizes from .5 to .9. For each of these,
 
 ```python
 # Your code here
+import matplotlib.pyplot as plt
+
+train_mses = []
+test_mses = []
+
+t_sizes = np.linspace(0.5, 0.9, 10)
+for t_size in t_sizes:
+    
+    # Create new split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=t_size, random_state=42)
+
+    # Fit transformers on new train and test
+    log_transformer.fit(X_train[continuous])
+    ohe.fit(X_train[categoricals])
+
+    # Transform training data
+    X_train = pd.concat([
+        pd.DataFrame(log_transformer.transform(X_train[continuous]), index=X_train.index),
+        pd.DataFrame(ohe.transform(X_train[categoricals]), index=X_train.index)
+    ], axis=1)
+
+    # Transform test data
+    X_test = pd.concat([
+        pd.DataFrame(log_transformer.transform(X_test[continuous]), index=X_test.index),
+        pd.DataFrame(ohe.transform(X_test[categoricals]), index=X_test.index)
+    ], axis=1)
+
+    # Fit model
+    linreg.fit(X_train, y_train)
+
+    # Append metrics to their respective lists
+    y_hat_train = linreg.predict(X_train)
+    y_hat_test = linreg.predict(X_test)
+    train_mses.append(mean_squared_error(y_train, y_hat_train))
+    test_mses.append(mean_squared_error(y_test, y_hat_test))
+
+fig, ax = plt.subplots()
+ax.scatter(t_sizes, train_mses, label='Training Error')
+ax.scatter(t_sizes, test_mses, label='Testing Error')
+ax.legend();
 ```
 
 ### Extension
@@ -122,6 +175,51 @@ Repeat the previous example, but for each train-test split size, generate 10 ite
 
 ```python
 # Your code here
+
+train_mses = []
+test_mses = []
+
+t_sizes = np.linspace(0.5, 0.9, 10)
+for t_size in t_sizes:
+    
+    inner_train_mses = []
+    inner_test_mses = []
+    for i in range(10):
+        # Create new split
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=t_size, random_state=i)
+        
+        # Skipping fitting the transformers; data quality issues cause too many OHE problems when
+        # fitting this number of different models, but if you don't use drop='first' the
+        # multicollinearity issues get pretty bad
+
+        # Transform training data
+        X_train = pd.concat([
+            pd.DataFrame(log_transformer.transform(X_train[continuous]), index=X_train.index),
+            pd.DataFrame(ohe.transform(X_train[categoricals]), index=X_train.index)
+        ], axis=1)
+
+        # Transform test data
+        X_test = pd.concat([
+            pd.DataFrame(log_transformer.transform(X_test[continuous]), index=X_test.index),
+            pd.DataFrame(ohe.transform(X_test[categoricals]), index=X_test.index)
+        ], axis=1)
+
+        # Fit model
+        linreg.fit(X_train, y_train)
+
+        # Append metrics to their respective lists
+        y_hat_train = linreg.predict(X_train)
+        y_hat_test = linreg.predict(X_test)
+        inner_train_mses.append(mean_squared_error(y_train, y_hat_train))
+        inner_test_mses.append(mean_squared_error(y_test, y_hat_test))
+
+    train_mses.append(np.mean(inner_train_mses))
+    test_mses.append(np.mean(inner_test_mses))
+
+fig, ax = plt.subplots()
+ax.scatter(t_sizes, train_mses, label='Average Training Error')
+ax.scatter(t_sizes, test_mses, label='Average Testing Error')
+ax.legend();
 ```
 
 What's happening here? Evaluate your result!
